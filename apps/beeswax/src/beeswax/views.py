@@ -312,6 +312,13 @@ def list_query_history(request):
 
   filter = request.GET.get(prefix + 'search') and request.GET.get(prefix + 'search') or ''
 
+  if request.GET.get('format') == 'json':
+    resp = {
+      'queries': [query.query for query in page.object_list]
+    }
+    return HttpResponse(json.dumps(resp), mimetype="application/json")
+
+
   return render('list_history.mako', request, {
     'request': request,
     'page': page,

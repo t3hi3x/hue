@@ -26,17 +26,271 @@
 ${ commonheader(_('Query'), app_name, user) | n,unicode }
 ${layout.menubar(section='query')}
 
+<div id="temporaryPlaceholder"></div>
+
+<a id="expandSidebar" href="javascript:void(0)"><i class="fa fa-chevron-right"></i></a>
+<a id="collapseSidebar" href="javascript:void(0)" title="${_('Hide the side bar')}"><i class="fa fa-chevron-left"></i></a>
 
 <div id="query-editor" class="container-fluid hide section">
 <div class="row-fluid">
+
+<div class="span2" id="navigator">
+  <ul class="nav nav-tabs" style="margin-bottom: 0">
+    <li class="active"><a href="#navigatorTab" data-toggle="tab" class="sidetab"><i class="fa fa-compass"></i> ${_('Navigator')}</a></li>
+    <li><a href="#recentTab" data-toggle="tab" class="sidetab"><i class="fa fa-align-left"></i> ${_('Recent')}</a></li>
+  </ul>
+  <div class="tab-content">
+    <div class="tab-pane active" id="navigatorTab">
+      <div class="card card-small card-tab">
+        <div class="card-body" style="margin-top: 0">
+          <a href="#" title="${_('Double click on a table name or field to insert it in the editor')}" rel="tooltip" data-placement="top" class="pull-right" style="margin:3px"><i class="fa fa-question-circle"></i></a>
+          <a id="refreshNavigator" href="#" title="${_('Manually refresh the table list')}" rel="tooltip" data-placement="top" class="pull-right" style="margin:3px"><i class="fa fa-refresh"></i></a>
+          <p>
+            <div class="nav-header" style="padding-left: 0">${_('database')}</div>
+            <select data-bind="options: databases, value: database" class="input-medium chosen-select" name="query-database" data-placeholder="${_('Choose a database...')}"></select>
+            <input id="navigatorSearch" type="text" placeholder="${ _('Table name...') }" style="width:90%; margin-top: 20px"/>
+            <span id="navigatorNoTables">${_('The selected database has no tables.')}</span>
+            <ul id="navigatorTables" class="unstyled"></ul>
+            <div id="navigatorLoader">
+              <!--[if !IE]><!--><i class="fa fa-spinner fa-spin" style="font-size: 20px; color: #DDD"></i><!--<![endif]-->
+              <!--[if IE]><img src="/static/art/spinner.gif"/><![endif]-->
+            </div>
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="tab-pane" id="recentTab">
+      <div class="card card-small card-tab">
+        <div class="card-body">
+          <p>
+            <div id="recentLoader">
+              <!--[if !IE]><!--><i class="fa fa-spinner fa-spin" style="font-size: 20px; color: #DDD"></i><!--<![endif]-->
+              <!--[if IE]><img src="/static/art/spinner.gif"/><![endif]-->
+            </div>
+            <div id="recentQueries"></div>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="querySide" class="span8">
+  <div id="queryContainer" class="card card-small">
+    <div style="margin-bottom: 30px">
+        % if can_edit_name:
+        <h1 class="card-heading simple">
+          <a href="javascript:void(0);"
+             id="query-name"
+             data-type="text"
+             data-name="name"
+             data-value="${design.name}"
+             data-original-title="${ _('Query name') }"
+             data-placement="right">
+          </a>
+          <a href="javascript:void(0);"
+             id="query-description"
+             data-type="textarea"
+             data-name="description"
+             data-value="${design.desc}"
+             data-original-title="${ _('Query description') }"
+             data-placement="right" style="font-size: 14px; margin-left: 10px">
+          </a>
+        </h1>
+        %endif
+    </div>
+    <div class="card-body">
+      <div class="tab-content">
+        <div id="queryPane">
+
+          <div data-bind="css: {'hide': design.errors().length == 0}" class="alert alert-error">
+            <!-- ko if: $root.getQueryErrors().length > 0 -->
+            <p><strong>${_('Please provide a query')}</strong></p>
+            <!-- /ko -->
+            <!-- ko if: $root.getQueryErrors().length == 0 -->
+            <p><strong>${_('Your query has the following error(s):')}</strong></p>
+
+            <div data-bind="foreach: design.errors">
+              <p data-bind="text: $data" class="queryErrorMessage"></p>
+            </div>
+            <!-- /ko -->
+          </div>
+
+          <div data-bind="css: {'hide': design.watch.errors().length == 0}" class="alert alert-error">
+            <p><strong>${_('Your query has the following error(s):')}</strong></p>
+
+            <div data-bind="foreach: design.watch.errors">
+              <p data-bind="text: $data" class="queryErrorMessage"></p>
+            </div>
+          </div>
+
+          <textarea class="hide" tabindex="1" name="query" id="queryField"></textarea>
+
+          <div class="actions">
+            <button data-bind="click: tryExecuteQuery, visible: $root.canExecute, enable: $root.queryEditorBlank" type="button" id="executeQuery" class="btn btn-primary disable-feedback" tabindex="2">${_('Execute')}</button>
+            <button data-bind="click: tryCancelQuery, visible: $root.design.isRunning()" class="btn btn-danger" data-loading-text="${ _('Canceling...') }" rel="tooltip" data-original-title="${ _('Cancel the query') }">${ _('Cancel') }</button>
+
+            <button data-bind="click: tryExecuteNextStatement, visible: !$root.design.isFinished()" type="button" class="btn btn-primary disable-feedback" tabindex="2">${_('Next')}</button>
+
+            <button data-bind="click: trySaveDesign, css: {'hide': !$root.design.id() || $root.design.id() == -1}" type="button" class="btn hide">${_('Save')}</button>
+            <button data-bind="click: saveAsModal" type="button" class="btn">${_('Save as...')}</button>
+            <button data-bind="click: tryExplainQuery" type="button" id="explainQuery" class="btn">${_('Explain')}</button>
+            &nbsp; ${_('or create a')} &nbsp;
+            <button data-bind="click: createNewQuery" type="button" class="btn">${_('New query')}</button>
+            <br/><br/>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="resizePanel"><a href="javascript:void(0)"><i class="fa fa-ellipsis-h"></i></a></div>
+
+  <div class="card card-small scrollable resultsContainer">
+
+    <div data-bind="visible: !$root.design.results.empty()">
+      <a id="expandResults" href="javascript:void(0)" title="${_('See results in full screen')}" rel="tooltip"
+        class="view-query-results hide pull-right"><h4 style="margin-right: 20px"><i class="fa fa-expand"></i></h4></a>
+
+      % if app_name != 'impala':
+      <a id="save-results" data-bind="click: saveResultsModal" href="javascript:void(0)" title="${_('Save the results to HDFS or a new Hive table')}" rel="tooltip"
+        class="view-query-results hide pull-right"><h4 style="margin-right: 20px"><i class="fa fa-save"></i></h4>
+      </a>
+      % endif
+
+      <a id="download-csv" data-bind="attr: {'href': '/beeswax/download/' + $root.design.history.id() + '/csv'}" href="javascript:void(0)" title="${_('Download the results in CSV format')}" rel="tooltip"
+        class="view-query-results download hide pull-right"><h4 style="margin-right: 20px"><i class="fa fa-arrow-circle-o-down"></i></h4>
+      </a>
+
+      <a id="download-excel" data-bind="attr: {'href': '/beeswax/download/' + $root.design.history.id() + '/xls'}" href="javascript:void(0)" title="${_('Download the results for excel')}" rel="tooltip"
+        class="view-query-results download hide pull-right"><h4 style="margin-right: 20px"><i class="fa fa-arrow-circle-o-down"></i></h4></a>
+   </div>
+
+    <div class="card-body">
+      <ul class="nav nav-tabs">
+        <li><a href="#query" data-toggle="tab">${_('Query')}</a></li>
+        <!-- ko if: !design.explain() -->
+        <li><a href="#log" data-toggle="tab">${_('Log')}</a></li>
+        <!-- /ko -->
+        <!-- ko if: !design.explain() && !design.isRunning() -->
+        <li data-bind="css: {'hide': $root.design.results.empty()}"><a href="#columns" data-toggle="tab">${_('Columns')}</a></li>
+        <li><a href="#results" data-toggle="tab">${_('Results')}</a></li>
+        <li data-bind="css: {'hide': $root.design.results.empty()}"><a href="#chart" data-toggle="tab">${_('Chart')}</a></li>
+        <!-- /ko -->
+        <!-- ko if: design.explain() && !design.isRunning() -->
+        <li><a href="#explanation" data-toggle="tab">${_('Explanation')}</a></li>
+        <!-- /ko -->
+      </ul>
+
+      <div class="tab-content">
+        <div class="tab-pane" id="query">
+          <pre data-bind="text: viewModel.design.statement()"></pre>
+        </div>
+
+        <!-- ko if: design.explain() -->
+        <div class="tab-pane" id="explanation">
+          <pre data-bind="text: $root.design.results.explanation()"></pre>
+        </div>
+        <!-- /ko -->
+
+        <!-- ko if: !design.explain() -->
+        <div class="active tab-pane" id="log">
+          <pre data-bind="text: $root.design.watch.logs().join('\n')"></pre>
+        </div>
+
+        <div class="tab-pane" id="columns" data-bind="css: {'hide': $root.design.results.empty()}">
+          <div data-bind="visible: $root.design.results.columns().length > 10">
+            <input id="columnFilter" class="input-xlarge" type="text" placeholder="${_('Filter for column name or type...')}" />
+          </div>
+          <table class="table table-striped table-condensed" cellpadding="0" cellspacing="0">
+            <tbody data-bind="foreach: $root.design.results.columns">
+              <tr class="columnRow">
+                <td rel="columntooltip" data-placement="left" data-bind="attr: {title: 'Scroll the column \'' + $data.name + '\''}"><a href="javascript:void(0)" data-row-selector="true" class="column-selector" data-bind="text: $data.name"></a></td>
+                <td class="columnType" data-bind="text: $.trim($data.type)"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="tab-pane" id="results">
+          <div data-bind="css: {'hide': design.results.errors().length == 0}" class="alert alert-error">
+            <p><strong>${_('Fetching results ran into the following error(s):')}</strong></p>
+
+            <div data-bind="foreach: design.results.errors">
+              <p data-bind="text: $data" class="queryErrorMessage"></p>
+            </div>
+          </div>
+
+          <div data-bind="css: {'hide': $root.design.results.empty()}">
+            <table class="table table-striped table-condensed resultTable" cellpadding="0" cellspacing="0" data-tablescroller-enforce-height="true">
+              <thead>
+              <tr data-bind="foreach: $root.design.results.columns">
+                <th data-bind="text: $data.name, css: { 'sort-numeric': isNumericColumn($data.type), 'sort-date': isDateTimeColumn($data.type), 'sort-string': isStringColumn($data.type)}"></th>
+              </tr>
+              </thead>
+            </table>
+          </div>
+
+          <div data-bind="css: {'hide': !$root.design.results.empty()}" id="resultEmpty">
+            <div class="card card-small scrollable">
+              <div class="row-fluid">
+                <div class="span10 offset1 center empty-wrapper">
+                  <i class="fa fa-frown-o"></i>
+                  <h1>${_('The operation has no results.')}</h1>
+                  <br/>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+         <div class="tab-pane" id="chart">
+           <div class="alert hide">
+            <strong>${_('Warning:')}</strong> ${_('the results on the chart have been limited to 1000 rows.')}
+          </div>
+          <div style="text-align: center">
+          <form class="form-inline">
+            ${_('Chart type')}&nbsp;
+            <div class="btn-group" data-toggle="buttons-radio">
+              <a rel="tooltip" data-placement="top" title="${_('Bars')}" id="blueprintBars" href="javascript:void(0)" class="btn"><i class="fa fa-bar-chart-o"></i></a>
+              <a rel="tooltip" data-placement="top" title="${_('Lines')}" id="blueprintLines" href="javascript:void(0)" class="btn"><i class="fa fa-signal"></i></a>
+              <a rel="tooltip" data-placement="top" title="${_('Map')}" id="blueprintMap" href="javascript:void(0)" class="btn"><i class="fa fa-map-marker"></i></a>
+            </div>&nbsp;&nbsp;
+            <span id="blueprintAxis" class="hide">
+              <label>${_('X-Axis')}
+                <select id="blueprintX" class="blueprintSelect"></select>
+              </label>&nbsp;&nbsp;
+              <label>${_('Y-Axis')}
+              <select id="blueprintY" class="blueprintSelect"></select>
+              </label>
+            </span>
+            <span id="blueprintLatLng" class="hide">
+              <label>${_('Latitude')}
+                <select id="blueprintLat" class="blueprintSelect"></select>
+              </label>&nbsp;&nbsp;
+              <label>${_('Longitude')}
+              <select id="blueprintLng" class="blueprintSelect"></select>
+              </label>&nbsp;&nbsp;
+              <label>${_('Label')}
+              <select id="blueprintDesc" class="blueprintSelect"></select>
+              </label>
+            </span>
+          </form>
+          </div>
+          <div id="blueprint" class="empty">${_("Please select a chart type.")}</div>
+        </div>
+        <!-- /ko -->
+      </div>
+    </div>
+  </div>
+</div>
+
+
 <div class="span2" id="advanced-settings">
   <form id="advancedSettingsForm" action="" method="POST" class="form form-horizontal">
     <div class="sidebar-nav">
       <ul class="nav nav-list">
-        <li class="nav-header">${_('database')}</li>
-        <li class="white" style="padding-top:0px">
-          <select data-bind="options: databases, value: database" class="input-medium chosen-select" name="query-database" data-placeholder="${_('Choose a database...')}"></select>
-        </li>
         <li class="nav-header">${_('settings')}</li>
         <li class="white paramContainer">
           <!-- ko foreach: design.settings.values -->
@@ -189,235 +443,8 @@ ${layout.menubar(section='query')}
   </form>
 </div>
 
-<div id="querySide" class="span8">
-  <div id="queryContainer" class="card card-small">
-    <div style="margin-bottom: 30px">
-        % if can_edit_name:
-        <h1 class="card-heading simple">
-          <a href="javascript:void(0);"
-             id="query-name"
-             data-type="text"
-             data-name="name"
-             data-value="${design.name}"
-             data-original-title="${ _('Query name') }"
-             data-placement="right">
-          </a>
-          <a href="javascript:void(0);"
-             id="query-description"
-             data-type="textarea"
-             data-name="description"
-             data-value="${design.desc}"
-             data-original-title="${ _('Query description') }"
-             data-placement="right" style="font-size: 14px; margin-left: 10px">
-          </a>
-        </h1>
-        %endif
-    </div>
-    <div class="card-body">
-      <div class="tab-content">
-        <div id="queryPane">
 
-          <div data-bind="css: {'hide': design.errors().length == 0}" class="alert alert-error">
-            <!-- ko if: $root.getQueryErrors().length > 0 -->
-            <p><strong>${_('Please provide a query')}</strong></p>
-            <!-- /ko -->
-            <!-- ko if: $root.getQueryErrors().length == 0 -->
-            <p><strong>${_('Your query has the following error(s):')}</strong></p>
 
-            <div data-bind="foreach: design.errors">
-              <p data-bind="text: $data" class="queryErrorMessage"></p>
-            </div>
-            <!-- /ko -->
-          </div>
-
-          <div data-bind="css: {'hide': design.watch.errors().length == 0}" class="alert alert-error">
-            <p><strong>${_('Your query has the following error(s):')}</strong></p>
-
-            <div data-bind="foreach: design.watch.errors">
-              <p data-bind="text: $data" class="queryErrorMessage"></p>
-            </div>
-          </div>
-
-          <textarea class="hide" tabindex="1" name="query" id="queryField"></textarea>
-
-          <div class="actions">
-            <button data-bind="click: tryExecuteQuery, visible: $root.canExecute, enable: $root.queryEditorBlank" type="button" id="executeQuery" class="btn btn-primary disable-feedback" tabindex="2">${_('Execute')}</button>
-            <button data-bind="click: tryCancelQuery, visible: $root.design.isRunning()" class="btn btn-danger" data-loading-text="${ _('Canceling...') }" rel="tooltip" data-original-title="${ _('Cancel the query') }">${ _('Cancel') }</button>
-
-            <button data-bind="click: tryExecuteNextStatement, visible: !$root.design.isFinished()" type="button" class="btn btn-primary disable-feedback" tabindex="2">${_('Next')}</button>
-
-            <button data-bind="click: trySaveDesign, css: {'hide': !$root.design.id() || $root.design.id() == -1}" type="button" class="btn hide">${_('Save')}</button>
-            <button data-bind="click: saveAsModal" type="button" class="btn">${_('Save as...')}</button>
-            <button data-bind="click: tryExplainQuery" type="button" id="explainQuery" class="btn">${_('Explain')}</button>
-            &nbsp; ${_('or create a')} &nbsp;
-            <button data-bind="click: createNewQuery" type="button" class="btn">${_('New query')}</button>
-            <br/><br/>
-          </div>
-
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="card card-small scrollable resultsContainer">
-
-    <div data-bind="visible: !$root.design.results.empty()">
-      <a id="expandResults" href="javascript:void(0)" title="${_('See results in full screen')}" rel="tooltip"
-        class="view-query-results hide pull-right"><h4 style="margin-right: 20px"><i class="fa fa-expand"></i></h4></a>
-
-      % if app_name != 'impala':
-      <a id="save-results" data-bind="click: saveResultsModal" href="javascript:void(0)" title="${_('Save the results to HDFS or a new Hive table')}" rel="tooltip"
-        class="view-query-results hide pull-right"><h4 style="margin-right: 20px"><i class="fa fa-save"></i></h4>
-      </a>
-      % endif
-
-      <a id="download-csv" data-bind="attr: {'href': '/beeswax/download/' + $root.design.history.id() + '/csv'}" href="javascript:void(0)" title="${_('Download the results in CSV format')}" rel="tooltip"
-        class="view-query-results download hide pull-right"><h4 style="margin-right: 20px"><i class="fa fa-arrow-circle-o-down"></i></h4>
-      </a>
-
-      <a id="download-excel" data-bind="attr: {'href': '/beeswax/download/' + $root.design.history.id() + '/xls'}" href="javascript:void(0)" title="${_('Download the results for excel')}" rel="tooltip"
-        class="view-query-results download hide pull-right"><h4 style="margin-right: 20px"><i class="fa fa-arrow-circle-o-down"></i></h4></a>
-   </div>
-
-    <div class="card-body">
-      <ul class="nav nav-tabs">
-        <li><a href="#query" data-toggle="tab">${_('Query')}</a></li>
-        <!-- ko if: !design.explain() -->
-        <li><a href="#log" data-toggle="tab">${_('Log')}</a></li>
-        <!-- /ko -->
-        <!-- ko if: !design.explain() && !design.isRunning() -->
-        <li data-bind="css: {'hide': $root.design.results.empty()}"><a href="#columns" data-toggle="tab">${_('Columns')}</a></li>
-        <li><a href="#results" data-toggle="tab">${_('Results')}</a></li>
-        <li data-bind="css: {'hide': $root.design.results.empty()}"><a href="#chart" data-toggle="tab">${_('Chart')}</a></li>
-        <!-- /ko -->
-        <!-- ko if: design.explain() && !design.isRunning() -->
-        <li><a href="#explanation" data-toggle="tab">${_('Explanation')}</a></li>
-        <!-- /ko -->
-      </ul>
-
-      <div class="tab-content">
-        <div class="tab-pane" id="query">
-          <pre data-bind="text: viewModel.design.statement()"></pre>
-        </div>
-
-        <!-- ko if: design.explain() -->
-        <div class="tab-pane" id="explanation">
-          <pre data-bind="text: $root.design.results.explanation()"></pre>
-        </div>
-        <!-- /ko -->
-
-        <!-- ko if: !design.explain() -->
-        <div class="active tab-pane" id="log">
-          <pre data-bind="text: $root.design.watch.logs().join('\n')"></pre>
-        </div>
-
-        <div class="tab-pane" id="columns" data-bind="css: {'hide': $root.design.results.empty()}">
-          <div data-bind="visible: $root.design.results.columns().length > 10">
-            <input id="columnFilter" class="input-xlarge" type="text" placeholder="${_('Filter for column name or type...')}" />
-          </div>
-          <table class="table table-striped table-condensed" cellpadding="0" cellspacing="0">
-            <tbody data-bind="foreach: $root.design.results.columns">
-              <tr class="columnRow">
-                <td rel="columntooltip" data-placement="left" data-bind="attr: {title: 'Scroll the column \'' + $data.name + '\''}"><a href="javascript:void(0)" data-row-selector="true" class="column-selector" data-bind="text: $data.name"></a></td>
-                <td class="columnType" data-bind="text: $.trim($data.type)"></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="tab-pane" id="results">
-          <div data-bind="css: {'hide': design.results.errors().length == 0}" class="alert alert-error">
-            <p><strong>${_('Fetching results ran into the following error(s):')}</strong></p>
-
-            <div data-bind="foreach: design.results.errors">
-              <p data-bind="text: $data" class="queryErrorMessage"></p>
-            </div>
-          </div>
-
-          <div data-bind="css: {'hide': $root.design.results.empty()}">
-            <table class="table table-striped table-condensed resultTable" cellpadding="0" cellspacing="0" data-tablescroller-enforce-height="true">
-              <thead>
-              <tr data-bind="foreach: $root.design.results.columns">
-                <th data-bind="text: $data.name, css: { 'sort-numeric': isNumericColumn($data.type), 'sort-date': isDateTimeColumn($data.type), 'sort-string': isStringColumn($data.type)}"></th>
-              </tr>
-              </thead>
-            </table>
-          </div>
-
-          <div data-bind="css: {'hide': !$root.design.results.empty()}" id="resultEmpty">
-            <div class="card card-small scrollable">
-              <div class="row-fluid">
-                <div class="span10 offset1 center empty-wrapper">
-                  <i class="fa fa-frown-o"></i>
-                  <h1>${_('The operation has no results.')}</h1>
-                  <br/>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-         <div class="tab-pane" id="chart">
-           <div class="alert hide">
-            <strong>${_('Warning:')}</strong> ${_('the results on the chart have been limited to 1000 rows.')}
-          </div>
-          <div style="text-align: center">
-          <form class="form-inline">
-            ${_('Chart type')}&nbsp;
-            <div class="btn-group" data-toggle="buttons-radio">
-              <a rel="tooltip" data-placement="top" title="${_('Bars')}" id="blueprintBars" href="javascript:void(0)" class="btn"><i class="fa fa-bar-chart-o"></i></a>
-              <a rel="tooltip" data-placement="top" title="${_('Lines')}" id="blueprintLines" href="javascript:void(0)" class="btn"><i class="fa fa-signal"></i></a>
-              <a rel="tooltip" data-placement="top" title="${_('Map')}" id="blueprintMap" href="javascript:void(0)" class="btn"><i class="fa fa-map-marker"></i></a>
-            </div>&nbsp;&nbsp;
-            <span id="blueprintAxis" class="hide">
-              <label>${_('X-Axis')}
-                <select id="blueprintX" class="blueprintSelect"></select>
-              </label>&nbsp;&nbsp;
-              <label>${_('Y-Axis')}
-              <select id="blueprintY" class="blueprintSelect"></select>
-              </label>
-            </span>
-            <span id="blueprintLatLng" class="hide">
-              <label>${_('Latitude')}
-                <select id="blueprintLat" class="blueprintSelect"></select>
-              </label>&nbsp;&nbsp;
-              <label>${_('Longitude')}
-              <select id="blueprintLng" class="blueprintSelect"></select>
-              </label>&nbsp;&nbsp;
-              <label>${_('Label')}
-              <select id="blueprintDesc" class="blueprintSelect"></select>
-              </label>
-            </span>
-          </form>
-          </div>
-          <div id="blueprint" class="empty">${_("Please select a chart type.")}</div>
-        </div>
-        <!-- /ko -->
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="span2" id="navigator">
-  <div class="card card-small">
-    <a href="#" title="${_('Double click on a table name or field to insert it in the editor')}" rel="tooltip" data-placement="left" class="pull-right" style="margin:10px;margin-left: 0"><i class="fa fa-question-circle"></i></a>
-    <a id="refreshNavigator" href="#" title="${_('Manually refresh the table list')}" rel="tooltip" data-placement="left" class="pull-right" style="margin:10px"><i class="fa fa-refresh"></i></a>
-
-    <h1 class="card-heading simple"><i class="fa fa-compass"></i> ${_('Navigator')}</h1>
-
-    <div class="card-body">
-      <p>
-        <input id="navigatorSearch" type="text" placeholder="${ _('Table name...') }" style="width:90%"/>
-        <span id="navigatorNoTables">${_('The selected database has no tables.')}</span>
-        <ul id="navigatorTables" class="unstyled"></ul>
-        <div id="navigatorLoader">
-          <!--[if !IE]><!--><i class="fa fa-spinner fa-spin" style="font-size: 20px; color: #DDD"></i><!--<![endif]-->
-          <!--[if IE]><img src="/static/art/spinner.gif"/><![endif]-->
-        </div>
-      </p>
-    </div>
-  </div>
-</div>
 </div>
 </div>
 
@@ -609,6 +636,7 @@ ${layout.menubar(section='query')}
   </div>
 </div>
 
+<script src="/static/ext/js/jquery/plugins/jquery-ui-draggable-droppable-sortable-1.8.23.min.js" type="text/javascript" charset="utf-8"></script>
 <script src="/static/ext/js/routie-0.3.0.min.js" type="text/javascript" charset="utf-8"></script>
 <script src="/static/ext/js/knockout-min.js" type="text/javascript" charset="utf-8"></script>
 <script src="/static/ext/js/knockout.mapping-2.3.2.js" type="text/javascript" charset="utf-8"></script>
@@ -760,6 +788,54 @@ ${layout.menubar(section='query')}
     color: #999;
   }
 
+  #queryContainer {
+    margin-bottom: 0;
+  }
+
+  #resizePanel a {
+    position: absolute;
+    cursor: ns-resize;
+    color: #666;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .resultsContainer {
+    margin-top: 20px;
+  }
+
+  #collapseSidebar, #expandSidebar {
+    position: absolute;
+    top: 94px;
+    padding: 6px;
+    -webkit-border-top-right-radius: 4px;
+    -webkit-border-bottom-right-radius: 4px;
+    -moz-border-radius-topright: 4px;
+    -moz-border-radius-bottomright: 4px;
+    border-top-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+  }
+
+  #collapseSidebar {
+    background-color: #FFF;
+    left: -2px;
+  }
+
+  #collapseSidebar:hover {
+    left: -4px;
+  }
+
+  #expandSidebar {
+    display: none;
+    color: #FFF;
+    background-color: #338BB8;
+    left: -4px;
+  }
+
+  #expandSidebar:hover {
+    left: -2px;
+  }
+
 </style>
 
 <link href="/static/ext/css/leaflet.css" rel="stylesheet">
@@ -771,7 +847,7 @@ ${layout.menubar(section='query')}
 <script src="/static/ext/chosen/chosen.jquery.min.js" type="text/javascript" charset="utf-8"></script>
 
 <script type="text/javascript" charset="utf-8">
-var codeMirror, renderNavigator, resetNavigator, dataTable;
+var codeMirror, renderNavigator, resetNavigator, resizeNavigator, dataTable, renderRecent;
 
 var HIVE_AUTOCOMPLETE_BASE_URL = "${ autocomplete_base_url | n,unicode }";
 var HIVE_AUTOCOMPLETE_FAILS_SILENTLY_ON = [500]; // error codes from beeswax/views.py - autocomplete
@@ -782,9 +858,70 @@ var HIVE_AUTOCOMPLETE_GLOBAL_CALLBACK = function (data) {
   }
 };
 
+function placeResizePanelHandle() {
+  // dinamically positioning the resize panel handle since IE doesn't play well with styles.
+  $("#resizePanel a").css("left", $("#resizePanel").position().left + $("#resizePanel").width()/2 - 8);
+}
 
-// Navigator.
+var CURRENT_CODEMIRROR_SIZE = 150;
+
+// Navigator, recent queries, collapsable sidebar
 $(document).ready(function () {
+
+  $("#collapseSidebar").on("click", function(){
+    $("#navigator").hide().appendTo($("#temporaryPlaceholder"));
+    $("#querySide").attr("class", "span10");
+    $("#expandSidebar").show();
+    $("#collapseSidebar").hide();
+    placeResizePanelHandle();
+  });
+
+  $("#expandSidebar").on("click", function(){
+    $("#navigator").show().prependTo($("#query-editor .row-fluid"));
+    $("#querySide").attr("class", "span8");
+    $("#expandSidebar").hide();
+    $("#collapseSidebar").show();
+    placeResizePanelHandle();
+  });
+
+  var INITIAL_RESIZE_POSITION = 299;
+  $("#resizePanel a").draggable({
+    axis: "y",
+    drag: function(e, ui) {
+      var _this = $(this);
+      if (_this.offset().top > INITIAL_RESIZE_POSITION){
+        CURRENT_CODEMIRROR_SIZE = 100 + (_this.offset().top - INITIAL_RESIZE_POSITION);
+        codeMirror.setSize("99%", CURRENT_CODEMIRROR_SIZE);
+      }
+      if (ui.position.top < INITIAL_RESIZE_POSITION) {
+        ui.position.top = INITIAL_RESIZE_POSITION;
+      }
+    }
+  });
+
+  renderRecent = function() {
+    $("#recentQueries").empty();
+    $("#recentLoader").show();
+    $.getJSON("${ url(app_name + ':list_query_history') }?format=json", function(data) {
+      if (data && data.queries) {
+        $(data.queries).each(function(cnt, item){
+          var _q = $("<div>").html("<code>" + item + "</code>").attr("title", item);
+          _q.css("margin-bottom", "5px");
+          _q.css("cursor", "pointer");
+          _q.on("click", function(){
+            codeMirror.setValue(_q.attr("title"));
+          });
+          _q.appendTo($("#recentQueries"));
+        });
+        $("#recentLoader").hide();
+      }
+      else {
+        $("<div>").text("${_('No recent queries have been found.')}").appendTo($("#recentQueries"));
+      }
+    });
+  }
+
+  renderRecent();
 
   $("#navigatorQuicklook").modal({
     show: false
@@ -807,6 +944,12 @@ $(document).ready(function () {
       }
     });
   });
+
+  resizeNavigator = function () {
+    $("#navigator .card").css("min-height", ($(window).height() - 150) + "px");
+    $("#navigatorTables").css("max-height", ($(window).height() - 280) + "px").css("overflow-y", "auto");
+    $("#recentQueries").css("max-height", ($(window).height() - 200) + "px").css("overflow-y", "auto");
+  }
 
   resetNavigator = function () {
     var _db = viewModel.database();
@@ -908,8 +1051,7 @@ $(document).ready(function () {
     resetNavigator();
   });
 
-  $("#navigator .card").css("min-height", ($(window).height() - 130) + "px");
-  $("#navigatorTables").css("max-height", ($(window).height() - 260) + "px").css("overflow-y", "auto");
+  resizeNavigator();
 
   viewModel.databases.subscribe(function () {
     if ($.totalStorage("${app_name}_last_database") != null && $.inArray($.totalStorage("${app_name}_last_database"), viewModel.databases())) {
@@ -936,7 +1078,7 @@ $(document).ready(function () {
     $("a[href='#results']").click();
   });
 
-  $(document).on("shown", "a[data-toggle='tab']", function (e) {
+  $(document).on("shown", "a[data-toggle='tab']:not(.sidetab)", function (e) {
     if ($(e.target).attr("href") == "#log") {
       logsAtEnd = true;
       window.setTimeout(resizeLogs, 150);
@@ -967,7 +1109,7 @@ function reinitializeTable(max) {
   var _max = max || 10;
 
   function fn(){
-    var container = $($("a[data-toggle='tab']").parent(".active").find("a").attr("href"));
+    var container = $($("a[data-toggle='tab']:not(.sidetab)").parent(".active").find("a").attr("href"));
     if ($(".dataTables_wrapper").height() > 0) {
       $(".dataTables_wrapper").jHueTableScroller({
         minHeight: $(window).height() - 190,
@@ -1013,8 +1155,7 @@ $(document).ready(function () {
     resizeTimeout = window.setTimeout(function () {
       // prevents endless loop in IE8
       if (winWidth != $(window).width() || winHeight != $(window).height()) {
-        $("#navigator .card").css("min-height", ($(window).height() - 130) + "px");
-        $("#navigatorTables").css("max-height", ($(window).height() - 260) + "px").css("overflow-y", "auto");
+        resizeNavigator();
         winWidth = $(window).width();
         winHeight = $(window).height();
       }
@@ -1177,6 +1318,7 @@ $(document).ready(function () {
   codeMirror.on("blur", function () {
     $(document.body).off("contextmenu");
   });
+
 });
 
 var editables = function() {
@@ -1236,7 +1378,7 @@ $(document).ready(function () {
     resizeLogs();
   });
 
-  $(document).on("shown", "a[data-toggle='tab']", function (e) {
+  $(document).on("shown", "a[data-toggle='tab']:not(.sidetab)", function (e) {
     if ($(e.target).attr("href") != "#results"){
       $($(e.target).attr("href")).css('height', 'auto');
       if ($(e.target).attr("href") == "#chart") {
@@ -1898,8 +2040,8 @@ $(document).ready(function () {
     'query': function () {
       showSection('query-editor');
       queryPage();
-
-      codeMirror.setSize("99%", $(window).height() - 270 - $("#queryPane .alert-error").outerHeight() - $(".nav-tabs").outerHeight());
+      codeMirror.setSize("99%", CURRENT_CODEMIRROR_SIZE);
+      placeResizePanelHandle();
     },
     'query/execute/params': function () {
       if (viewModel.design.parameters().length == 0) {
@@ -1926,16 +2068,15 @@ $(document).ready(function () {
       queryLogPage();
 
       clickHard('.resultsContainer .nav-tabs a[href="#log"]');
-
-      codeMirror.setSize("99%", 100);
     },
     'query/results': function () {
       showSection('query-editor');
       queryResultsPage();
 
-      codeMirror.setSize("99%", 100);
-
       clickHard('.resultsContainer .nav-tabs a[href="#results"]');
+
+      renderRecent();
+      placeResizePanelHandle();
 
       logGA('query/results');
     },
@@ -1948,8 +2089,6 @@ $(document).ready(function () {
       queryResultsPage();
 
       clickHard('.resultsContainer .nav-tabs a[href="#explanation"]');
-
-      codeMirror.setSize("99%", 100);
     },
     'watch/logs': function() {
       showSection('query-editor');
