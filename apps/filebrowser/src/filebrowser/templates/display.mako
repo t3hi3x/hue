@@ -162,7 +162,7 @@ function displayViewModel(params) {
   self.isLoading = ko.observable(true);
 
   self.totalPages = ko.computed(function () {
-    return Math.floor(self.size() / self.length());
+    return Math.max(Math.floor(self.size() / self.length()), 1);
   });
 
   self.upperPage = ko.observable(Math.min(self.totalPages(), 50));
@@ -463,7 +463,7 @@ $(document).ready(function () {
 
   $("#fileArea").jHueScrollUp();
 
-  if (viewModel.totalPages() < viewModel.MAX_PAGES_TO_ENABLE_SCROLLING) { // enable scrolling
+  if (viewModel.totalPages() < viewModel.MAX_PAGES_TO_ENABLE_SCROLLING && viewModel.mode() == "text") { // enable scrolling
     var _fileAreaScrollTimeout = -1;
     $("#fileArea").on("scroll", function () {
       if ($("#fileArea").scrollTop() < 30) {
