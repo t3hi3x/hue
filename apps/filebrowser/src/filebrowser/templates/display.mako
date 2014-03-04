@@ -332,11 +332,14 @@ function resizeText() {
 }
 
 function formatHex(number, padding) {
-  var _filler = "";
-  for (var i = 0; i < padding - 1; i++) {
-    _filler += "0";
+  if ("undefined" != typeof number){
+    var _filler = "";
+    for (var i = 0; i < padding - 1; i++) {
+      _filler += "0";
+    }
+    return (_filler + number.toString(16)).substr(-padding);
   }
-  return (_filler + number.toString(16)).substr(-padding);
+  return "";
 }
 
 var pages = {};
