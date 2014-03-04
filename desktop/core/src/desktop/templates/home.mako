@@ -123,19 +123,34 @@ ${ commonheader(_('Welcome Home'), "home", user) | n,unicode }
            <li class="viewHistory toggable-section">
              <a href="javascript:void(0)"><i class="fa fa-clock-o"></i> ${_('History')} <span id="historyCounter" class="badge pull-right">0</span></a>
            </li>
-          <li class="nav-header tag-header">${_('Projects')} <div class="edit-tags" style="display: inline;cursor: pointer;margin-left: 6px" title="${ _('Edit projects') }"><i class="fa fa-tags"></i></div> </li>
+          <li class="nav-header tag-mine-header">${_('My Projects')} <div class="edit-tags" style="display: inline;cursor: pointer;margin-left: 6px" title="${ _('Edit projects') }"><i class="fa fa-pencil"></i></div> </li>
+          <% shown_mine = 0 %>
           % if len(tags) > 2:
             % for tag in tags:
-              % if tag.tag not in ('trash', 'history'):
-              <li class="toggle-tag" data-tag="${ tag.tag }"><a href="javascript:void(0)">${ tag.tag } <span class="tag-counter badge pull-right">0</span></a></li>
+              % if tag.tag not in ('trash', 'history') and tag.is_mine:
+              <% shown_mine+= 1 %>
+              <li class="toggle-tag" data-tag="${ tag.tag }"><a href="javascript:void(0)"><i class="fa fa-tag"></i> ${ tag.tag }<span class="tag-counter badge pull-right">0</span></a></li>
               % endif
             % endfor
-          % else:
-            <li><a href="javascript:void(0)" class="edit-tags" style="line-height:24px"><i class="fa fa-plus-circle"></i> ${_('There are currently no projects. Click here to add one now!')}</a></li>
           % endif
-          <li class="nav-header tag-header">
-            ${_('Shared with me')} <div class="edit-tags" style="display: inline;margin-left: 6px" ><i class="fa fa-tags"></i></div>
+          % if shown_mine == 0:
+            <li><a href="javascript:void(0)" class="edit-tags" style="line-height:24px"><i class="fa fa-plus-circle"></i> ${_('You currently own no projects. Click here to add one now!')}</a></li>
+          % endif
+          <li class="nav-header tag-shared-header">
+            ${_('Shared with me')}
           </li>
+           <% shown_shared = 0 %>
+           % if len(tags) > 2:
+            % for tag in tags:
+              % if tag.tag not in ('trash', 'history') and not tag.is_mine:
+              <% shown_shared+= 1 %>
+              <li class="toggle-tag" data-tag="${ tag.tag }"><a href="javascript:void(0)"><i class="fa fa-tag"></i> ${ tag.tag }<span class="tag-counter badge pull-right">0</span></a></li>
+              % endif
+            % endfor
+          % endif
+          % if shown_shared == 0:
+            <li><a href="javascript:void(0)" style="line-height:24px"><i class="fa fa-plus-circle"></i> ${_('There are currently no projects shared with you.')}</a></li>
+          % endif
         </ul>
       </div>
 
@@ -426,7 +441,12 @@ $(document).ready(function () {
         var _t = $("<li>").addClass("toggle-tag");
         _t.attr("data-tag", JSON_TAGS[i].name);
         _t.html('<a href="javascript:void(0)">' + JSON_TAGS[i].name + '<span class="tag-counter badge pull-right">0</span></a>');
-        _t.insertAfter(".tag-header");
+        if (JSON_TAGS[i].isMine){
+          _t.insertAfter(".tag-mine-header");
+        }
+        else {
+          _t.insertAfter(".tag-shared-header");
+        }
       }
     }
     if (_selected != ""){
