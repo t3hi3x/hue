@@ -76,6 +76,7 @@ def massaged_tags_for_json(tags, user):
     massaged_tag = {
       'id': tag.id,
       'name': tag.tag,
+      'owner': tag.owner.username,
       'isTrash': tag.id == trash.id,
       'isHistory': tag.id == history.id,
       'isExample': tag.tag == DocumentTag.EXAMPLE,

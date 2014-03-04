@@ -144,7 +144,7 @@ ${ commonheader(_('Welcome Home'), "home", user) | n,unicode }
             % for tag in tags:
               % if tag.tag not in ('trash', 'history') and not tag.is_mine:
               <% shown_shared+= 1 %>
-              <li class="toggle-tag" data-tag="${ tag.tag }"><a href="javascript:void(0)"><i class="fa fa-tag"></i> ${ tag.tag }<span class="tag-counter badge pull-right">0</span></a></li>
+              <li class="toggle-tag" data-tag="${ tag.tag }" rel="tooltip" title="${_('Shared by %s' % tag.owner)}" data-placement="right"><a href="javascript:void(0)"><i class="fa fa-tag"></i> ${ tag.tag }<span class="tag-counter badge pull-right">0</span></a></li>
               % endif
             % endfor
           % endif
@@ -440,11 +440,15 @@ $(document).ready(function () {
       if (!JSON_TAGS[i].isTrash && !JSON_TAGS[i].isHistory) {
         var _t = $("<li>").addClass("toggle-tag");
         _t.attr("data-tag", JSON_TAGS[i].name);
-        _t.html('<a href="javascript:void(0)">' + JSON_TAGS[i].name + '<span class="tag-counter badge pull-right">0</span></a>');
+        _t.html('<a href="javascript:void(0)"><i class="fa fa-tag"></i> ' + JSON_TAGS[i].name + '<span class="tag-counter badge pull-right">0</span></a>');
         if (JSON_TAGS[i].isMine){
           _t.insertAfter(".tag-mine-header");
         }
         else {
+          _t.tooltip({
+            placement: "right",
+            title: "${_('Shared by')} " + JSON_TAGS[i].owner
+          });
           _t.insertAfter(".tag-shared-header");
         }
       }
@@ -453,6 +457,7 @@ $(document).ready(function () {
       $(".toggle-tag[data-tag='"+_selected+"']").click();
     }
     updateTagCounters();
+    $("a[rel='tooltip']").tooltip();
   }
 
   function renderTagsModal() {
