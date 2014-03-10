@@ -80,7 +80,6 @@ def get_backend_name():
 
 @login_notrequired
 def dt_login(request):
-  """Used by the non-jframe login"""
   redirect_to = request.REQUEST.get('next', '/')
   is_first_login_ever = first_login_ever()
   backend_name = get_backend_name()
@@ -98,7 +97,7 @@ def dt_login(request):
         # It provides 'backends' on the User object.
         user = auth_form.get_user()
         login(request, user)
-
+        print user
         if request.session.test_cookie_worked():
           request.session.delete_test_cookie()
 
@@ -119,6 +118,12 @@ def dt_login(request):
   else:
     first_user_form = None
     auth_form = AuthenticationForm()
+
+  if backend_name == 'DemoBackend' and False:
+    user = authenticate(username='test', password='test')
+    login(request, user)
+    ensure_home_directory(request.fs, user.username)
+    return HttpResponseRedirect(redirect_to)
 
   request.session.set_test_cookie()
   return render('login.mako', request, {
