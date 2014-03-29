@@ -200,6 +200,12 @@ class DocumentManager(models.Manager):
 
     return Document.objects.get_docs(user, model_class).exclude(tags__in=exclude).order_by('-last_modified')
 
+  def history_docs(self, model_class, user):
+    include = [DocumentTag.objects.get_history_tag(user=user)]
+    exclude = [DocumentTag.objects.get_trash_tag(user=user)]
+
+    return Document.objects.get_docs(user, model_class).filter(tags__in=include).exclude(tags__in=exclude).order_by('-last_modified')
+
   def available(self, model_class, user, with_history=False):
     docs = self.available_docs(model_class, user, with_history)
 
@@ -384,8 +390,8 @@ class Document(models.Model):
   def add_to_history(self):
     tag = DocumentTag.objects.get_history_tag(user=self.owner)
     self.tags.add(tag)
-    default_tag = DocumentTag.objects.get_default_tag(user=self.owner)
-    self.tags.remove(default_tag)
+    #default_tag = DocumentTag.objects.get_default_tag(user=self.owner)
+    #self.tags.remove(default_tag)
 
   def share_to_default(self):
     DocumentPermission.objects.share_to_default(self)
@@ -411,7 +417,7 @@ class Document(models.Model):
   def copy(self, name=None, owner=None):
     copy_doc = self
 
-    tags = self.tags.all()
+    tags = self.tags.all() # Don't copy tags
 
     copy_doc.pk = None
     copy_doc.id = None
@@ -421,10 +427,10 @@ class Document(models.Model):
       copy_doc.owner = owner
     copy_doc.save()
 
-    tags = filter(lambda tag: tag.tag != DocumentTag.EXAMPLE, tags)
-    if not tags:
-      default_tag = DocumentTag.objects.get_default_tag(copy_doc.owner)
-      tags = [default_tag]
+    #tags = filter(lambda tag: tag.tag != DocumentTag.EXAMPLE, tags)
+    #if not tags:
+    default_tag = DocumentTag.objects.get_default_tag(copy_doc.owner)
+    tags = [default_tag]
     copy_doc.tags.add(*tags)
 
     return copy_doc

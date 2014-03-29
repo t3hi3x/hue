@@ -113,8 +113,7 @@ from django.template.defaultfilters import escape, escapejs
         }
         function getParameterByName(name) {
           name = name.replace(/[\[]/, "\\\[").replace(/[\]]/, "\\\]");
-          var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
-                  results = regex.exec(_qs);
+          var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"), results = regex.exec(_qs);
           return results == null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
         }
     %endif
@@ -140,11 +139,11 @@ from django.template.defaultfilters import escape, escapejs
     var _code = (e.keyCode ? e.keyCode : e.which);
     if (_catchEnterKeyOnModals && $(".modal").is(":visible") && _code == 13) {
       var _currentModal = $(".modal:visible");
-      if (_currentModal.find(".btn-primary").length > 0) {
-        _currentModal.find(".btn-primary").click();
+      if (_currentModal.find(".btn-primary:not(.disable-enter)").length > 0) {
+        _currentModal.find(".btn-primary:not(.disable-enter)").click();
       }
-      else if (_currentModal.find(".btn-danger").length > 0) {
-        _currentModal.find(".btn-danger").click();
+      else if (_currentModal.find(".btn-danger:not(.disable-enter)").length > 0) {
+        _currentModal.find(".btn-danger:not(.disable-enter)").click();
       }
     }
   });
@@ -179,29 +178,10 @@ from django.template.defaultfilters import escape, escapejs
     %endif
 
 </script>
-%if tours_and_tutorials:
+
+% if tours_and_tutorials:
   <%include file="tours.mako"/>
-  <div id="jHueTourModal" class="modal hide fade" tabindex="-1">
-    <div class="modal-header">
-      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-      <h3>${_('Did you know?')}</h3>
-    </div>
-    <div class="modal-body">
-      <div class="pull-left" style="color: #DDDDDD;font-size: 116px;margin: 10px; margin-right: 20px"><i class="fa fa-flag-checkered"></i></div>
-      <div style="margin: 10px">
-      <p>
-        ${_('There are one or more tours available for this page. These tours were created to guide you around.')}
-      </p>
-      <p>
-        ${_('You can see the list of tours by clicking on the checkered flag icon at the top right of this page.')} <span class="badge badge-info"><i class="fa fa-flag-checkered"></i></span>
-      </p>
-        </div>
-    </div>
-    <div class="modal-footer">
-      <label class="checkbox" style="float:left"><input id="jHueTourModalChk" type="checkbox" />${_('Do not show this dialog again')}</label>
-      <a id="jHueTourModalClose" href="#" class="btn btn-primary disable-feedback">${_('Got it, prof!')}</a>
-    </div>
-  </div>
-%endif
+% endif
+
   </body>
 </html>

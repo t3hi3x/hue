@@ -948,7 +948,7 @@ ${layout.menubar(section='query')}
 var codeMirror, renderNavigator, resetNavigator, resizeNavigator, dataTable, renderRecent;
 
 var HIVE_AUTOCOMPLETE_BASE_URL = "${ autocomplete_base_url | n,unicode }";
-var HIVE_AUTOCOMPLETE_FAILS_SILENTLY_ON = [500]; // error codes from beeswax/views.py - autocomplete
+var HIVE_AUTOCOMPLETE_FAILS_QUIETLY_ON = [500]; // error codes from beeswax/views.py - autocomplete
 
 var HIVE_AUTOCOMPLETE_GLOBAL_CALLBACK = function (data) {
   if (data != null && data.error) {
@@ -1292,7 +1292,7 @@ function reinitializeTable(max) {
 $(document).ready(function () {
   $.jHueScrollUp();
 
-  var queryPlaceholder = "${_('Example: SELECT * FROM tablename, or press CTRL + space')}";
+  var queryPlaceholder = $("<span>").html($("<span>").html("${_('Example: SELECT * FROM tablename, or press CTRL + space')}").text()).text();
 
   $("#executeQuery").tooltip({
     title: '${_("Press \"tab\", then \"enter\".")}'
@@ -1347,6 +1347,10 @@ $(document).ready(function () {
       codeMirror.execCommand("autocomplete");
     }
   };
+
+  $(document).on("error.autocomplete", function(){
+    $(".CodeMirror-spinner").remove();
+  });
 
   function splitStatements(hql) {
     var statements = [];
@@ -1437,7 +1441,7 @@ $(document).ready(function () {
         else {
           CodeMirror.possibleTable = false;
           CodeMirror.tableFieldMagic = false;
-          if ((_before.toUpperCase().indexOf(" FROM ") > -1 || _before.toUpperCase().indexOf(" TABLE ") > -1 || _before.toUpperCase().indexOf(" STATS ") > -1) && _before.toUpperCase().indexOf(" ON ") == -1 && _before.toUpperCase().indexOf(" WHERE ") == -1 ||
+          if ((_before.toUpperCase().indexOf(" FROM ") > -1 || _before.toUpperCase().indexOf(" TABLE ") > -1 || _before.toUpperCase().indexOf(" STATS ") > -1) && _before.toUpperCase().indexOf(" ON ") == -1 && _before.toUpperCase().indexOf(" ORDER BY ") == -1 && _before.toUpperCase().indexOf(" WHERE ") == -1 ||
               _before.toUpperCase().indexOf("REFRESH") > -1 || _before.toUpperCase().indexOf("METADATA") > -1 || _before.toUpperCase().indexOf("DESCRIBE") > -1) {
             CodeMirror.possibleTable = true;
           }
@@ -1452,7 +1456,7 @@ $(document).ready(function () {
             }
           }
           else {
-            if (_before.toUpperCase().indexOf("WHERE ") > -1 && !CodeMirror.fromDot && _before.toUpperCase().match(/ ON| LIMIT| GROUP| SORT/) == null) {
+            if ((_before.toUpperCase().indexOf("WHERE ") > -1 || _before.toUpperCase().indexOf("ORDER BY ") > -1) && !CodeMirror.fromDot && _before.toUpperCase().match(/ ON| LIMIT| GROUP| SORT/) == null) {
               fieldsAutocomplete(cm);
             }
             else {
@@ -1470,7 +1474,7 @@ $(document).ready(function () {
       var _value = getStatementAtCursor().statement;
       var _from = _value.toUpperCase().indexOf("FROM");
       if (_from > -1) {
-        var _match = _value.toUpperCase().substring(_from).match(/ ON| LIMIT| WHERE| GROUP| SORT|;/);
+        var _match = _value.toUpperCase().substring(_from).match(/ ON| LIMIT| WHERE| GROUP| SORT| ORDER BY|;/);
         var _to = _value.length;
         if (_match) {
           _to = _match.index;

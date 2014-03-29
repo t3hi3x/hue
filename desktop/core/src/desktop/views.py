@@ -15,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import itertools
 import json
 import logging
 import os
@@ -34,49 +33,35 @@ from django.shortcuts import redirect
 from django.utils.translation import ugettext as _
 import django.views.debug
 
+import desktop.conf
+import desktop.log.log_buffer
+
+from desktop.api import massaged_tags_for_json, massaged_documents_for_json,\
+  _get_docs
 from desktop.lib import django_mako
 from desktop.lib.conf import GLOBAL_CONFIG
 from desktop.lib.django_util import login_notrequired, render_json, render
 from desktop.lib.i18n import smart_str
 from desktop.lib.paths import get_desktop_root
 from desktop.log.access import access_log_level, access_warn
-from desktop.models import UserPreferences, Settings, Document
+from desktop.models import UserPreferences, Settings
 from desktop import appmanager
-import desktop.conf
-import desktop.log.log_buffer
-from desktop.api import massaged_tags_for_json, massaged_documents_for_json
 
 
 LOG = logging.getLogger(__name__)
 
 
 def home(request):
-  docs = itertools.chain(
-      Document.objects.get_docs(request.user).order_by('-last_modified').exclude(tags__tag__in=['history'])[:500],
-      Document.objects.get_docs(request.user).order_by('-last_modified').filter(tags__tag__in=['history'])[:100]
-  )
-  docs = list(docs)
-  tags = list(set([tag for doc in docs for tag in doc.tags.all()])) # List of all personal and share tags
+  docs = _get_docs(request.user)
 
   apps = appmanager.get_apps_dict(request.user)
 
   return render('home.mako', request, {
     'apps': apps,
-    'documents': augment_docs(docs, request.user),
     'json_documents': json.dumps(massaged_documents_for_json(docs, request.user)),
-    'tags': augment_tags(tags, request.user),
-    'json_tags': json.dumps(massaged_tags_for_json(tags, request.user))
+    'json_tags': json.dumps(massaged_tags_for_json(docs, request.user)),
+    'tours_and_tutorials': Settings.get_settings().tours_and_tutorials
   })
-
-def augment_docs(docs, user):
-  for doc in docs:
-    doc.is_mine = doc.owner.username == user.username
-  return docs
-
-def augment_tags(tags, user):
-  for tag in tags:
-    tag.is_mine = tag.owner.username == user.username
-  return tags
 
 
 @access_log_level(logging.WARN)
@@ -359,7 +344,8 @@ def commonheader(title, section, user, padding="90px"):
     'title': title,
     'section': section,
     'padding': padding,
-    'user': user
+    'user': user,
+    'is_demo': desktop.conf.DEMO_ENABLED.get()
   })
 
 def commonfooter(messages=None):

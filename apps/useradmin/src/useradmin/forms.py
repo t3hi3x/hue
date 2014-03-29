@@ -161,13 +161,13 @@ class AddLdapGroupsForm(forms.Form):
                                       help_text=_t('Import unimported or new users from the group.'),
                                       initial=False,
                                       required=False)
-  import_members_recursive = forms.BooleanField(label=_t('Import new members from all subgroups'),
-                                                help_text=_t('Import unimported or new users from the all subgroups.'),
-                                                initial=False,
-                                                required=False)
   ensure_home_directories = forms.BooleanField(label=_t('Create home directories'),
                                                 help_text=_t('Create home directories for every member imported, if members are being imported.'),
                                                 initial=True,
+                                                required=False)
+  import_members_recursive = forms.BooleanField(label=_t('Import new members from all subgroups'),
+                                                help_text=_t('Import unimported or new users from the all subgroups.'),
+                                                initial=False,
                                                 required=False)
 
   def clean(self):

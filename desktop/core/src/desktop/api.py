@@ -15,10 +15,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import logging
 import json
 import time
 
+from collections import defaultdict
 
 from django.http import HttpResponse
 from django.core.urlresolvers import reverse
@@ -31,18 +33,123 @@ from desktop.models import Document, DocumentTag
 LOG = logging.getLogger(__name__)
 
 
-def list_docs(request):
-  docs = Document.objects.get_docs(request.user).order_by('-last_modified')[:1000]
-  return HttpResponse(json.dumps(massaged_documents_for_json(docs, request.user)), mimetype="application/json")
+def _get_docs(user):
+  history_tag = DocumentTag.objects.get_history_tag(user)  
+  trash_tag = DocumentTag.objects.get_trash_tag(user)
+  docs = itertools.chain(
+      Document.objects.get_docs(user).exclude(tags__in=[trash_tag]).filter(tags__in=[history_tag]).order_by('-last_modified')[:500],
+      Document.objects.get_docs(user).exclude(tags__in=[history_tag]).order_by('-last_modified')[:100]
+  )
+  return list(docs)  
 
 
-def list_tags(request):
-  tags = DocumentTag.objects.get_tags(user=request.user)
-  return HttpResponse(json.dumps(massaged_tags_for_json(tags, request.user)), mimetype="application/json")
+def massaged_tags_for_json(docs, user):
+  """
+    var TAGS_DEFAULTS = {
+    'history': {'name': 'History', 'id': 1, 'docs': [1], 'type': 'history'},
+    'trash': {'name': 'Trash', 'id': 3, 'docs': [2]},
+    'mine': [{'name': 'default', 'id': 2, 'docs': [3]}, {'name': 'web', 'id': 3, 'docs': [3]}],
+    'notmine': [{'name': 'example', 'id': 20, 'docs': [10]}, {'name': 'ex2', 'id': 30, 'docs': [10, 11]}]
+  };
+  """
+  ts = {
+    'trash': {},
+    'history': {},
+    'mine': [],
+    'notmine': [],
+  }
+  sharers = defaultdict(list)
 
+  trash_tag = DocumentTag.objects.get_trash_tag(user)
+  history_tag = DocumentTag.objects.get_history_tag(user)
+
+  tag_doc_mapping = defaultdict(set) # List of documents available in each tag
+  for doc in docs:
+    for tag in doc.tags.all():
+      tag_doc_mapping[tag].add(doc)
+
+  ts['trash'] = massaged_tags(trash_tag, tag_doc_mapping)
+  ts['history'] = massaged_tags(history_tag, tag_doc_mapping)
+  tags = list(set(tag_doc_mapping.keys() + [tag for tag in DocumentTag.objects.get_tags(user=user)])) # List of all personal and shared tags
+
+  for tag in tags:
+    massaged_tag = massaged_tags(tag, tag_doc_mapping)
+    if tag == trash_tag:
+      ts['trash'] = massaged_tag
+    elif tag == history_tag:
+      ts['history'] = massaged_tag
+    elif tag.owner == user:
+      ts['mine'].append(massaged_tag)
+    else:
+      sharers[tag.owner].append(massaged_tag)
+
+  ts['notmine'] = [{'name': sharer.username, 'projects': projects} for sharer, projects in sharers.iteritems()]
+
+  return ts
+
+def massaged_tags(tag, tag_doc_mapping):
+  return {
+    'id': tag.id,
+    'name': tag.tag,
+    'owner': tag.owner.username,
+    'docs': [doc.id for doc in tag_doc_mapping[tag]] # Could get with one request groupy
+  }
 
 def massaged_documents_for_json(documents, user):
-  return [massage_doc_for_json(doc, user) for doc in documents]
+  """
+  var DOCUMENTS_DEFAULTS = {
+    '1': {
+      'id': 1,
+      'name': 'my query history', 'description': '', 'url': '/beeswax/execute/design/83', 'icon': '/beeswax/static/art/icon_beeswax_24.png',
+      'lastModified': '03/11/14 16:06:49', 'owner': 'admin', 'lastModifiedInMillis': 1394579209.0, 'isMine': true
+    },
+    '2': {
+      'id': 2,
+      'name': 'my query 2 trashed', 'description': '', 'url': '/beeswax/execute/design/83', 'icon': '/beeswax/static/art/icon_beeswax_24.png',
+      'lastModified': '03/11/14 16:06:49', 'owner': 'admin', 'lastModifiedInMillis': 1394579209.0, 'isMine': true
+     },
+     '3': {
+       'id': 3,
+       'name': 'my query 3 tagged twice', 'description': '', 'url': '/beeswax/execute/design/83', 'icon': '/beeswax/static/art/icon_beeswax_24.png',
+     'lastModified': '03/11/14 16:06:49', 'owner': 'admin', 'lastModifiedInMillis': 1394579209.0, 'isMine': true
+     },
+    '10': {
+      'id': 10,
+      'name': 'my query 3 shared', 'description': '', 'url': '/beeswax/execute/design/83', 'icon': '/beeswax/static/art/icon_beeswax_24.png',
+      'lastModified': '03/11/14 16:06:49', 'owner': 'admin', 'lastModifiedInMillis': 1394579209.0, 'isMine': true
+     },
+    '11': {
+      'id': 11,
+      'name': 'my query 4 shared', 'description': '', 'url': '/beeswax/execute/design/83', 'icon': '/beeswax/static/art/icon_beeswax_24.png',
+      'lastModified': '03/11/14 16:06:49', 'owner': 'admin', 'lastModifiedInMillis': 1394579209.0, 'isMine': true
+     }
+  };
+  """
+  docs = {}
+
+  for document in documents:
+    perms = document.list_permissions()
+    docs[document.id] = {
+      'id': document.id,
+      'contentType': document.content_type.name,
+      'icon': document.icon,
+      'name': document.name,
+      'url': document.content_object.get_absolute_url(),
+      'description': document.description,
+      'tags': [{'id': tag.id, 'name': tag.tag} for tag in document.tags.all()],
+      'perms': {
+        'read': {
+          'users': [{'id': friends.id, 'username': friends.username} for friends in perms.users.all()],
+          'groups': [{'id': group.id, 'name': group.name} for group in perms.groups.all()]
+        }
+      },
+      'owner': document.owner.username,
+      'isMine': document.owner == user,
+      'lastModified': document.last_modified.strftime("%x %X"),
+      'lastModifiedInMillis': time.mktime(document.last_modified.timetuple())
+   }
+
+  return docs
 
 
 def massage_doc_for_json(doc, user):
@@ -57,8 +164,8 @@ def massage_doc_for_json(doc, user):
       'tags': [{'id': tag.id, 'name': tag.tag} for tag in doc.tags.all()],
       'perms': {
         'read': {
-          'users': [{'id': user.id, 'username': user.username} for user in perms.users.all()],
-          'groups': [{'id': group.id, 'name': group.name} for group in perms.groups.all()]
+          'users': [{'id': perm_user.id, 'username': perm_user.username} for perm_user in perms.users.all()],
+          'groups': [{'id': perm_group.id, 'name': perm_group.name} for perm_group in perms.groups.all()]
         }
       },
       'owner': doc.owner.username,
@@ -67,24 +174,6 @@ def massage_doc_for_json(doc, user):
       'lastModifiedInMillis': time.mktime(doc.last_modified.timetuple())
     }
 
-def massaged_tags_for_json(tags, user):
-  ts = []
-  trash = DocumentTag.objects.get_trash_tag(user)
-  history = DocumentTag.objects.get_history_tag(user)
-
-  for tag in tags:
-    massaged_tag = {
-      'id': tag.id,
-      'name': tag.tag,
-      'owner': tag.owner.username,
-      'isTrash': tag.id == trash.id,
-      'isHistory': tag.id == history.id,
-      'isExample': tag.tag == DocumentTag.EXAMPLE,
-      'isMine': tag.owner.username == user.username
-    }
-    ts.append(massaged_tag)
-
-  return ts
 
 def add_tag(request):
   response = {'status': -1, 'message': ''}
@@ -92,7 +181,10 @@ def add_tag(request):
   if request.method == 'POST':
     try:
       tag = DocumentTag.objects.create_tag(request.user, request.POST['name'])
-      response['tag_id'] = tag.id
+      response['name'] = request.POST['name']
+      response['id'] = tag.id
+      response['docs'] = []
+      response['owner'] = request.user.username
       response['status'] = 0
     except Exception, e:
       response['message'] = force_unicode(e)
@@ -136,15 +228,13 @@ def update_tags(request):
   return HttpResponse(json.dumps(response), mimetype="application/json")
 
 
-def remove_tags(request):
+def remove_tag(request):
   response = {'status': -1, 'message': _('Error')}
 
   if request.method == 'POST':
-    request_json = json.loads(request.POST['data'])
     try:
-      for tag_id in request_json['tag_ids']:
-        DocumentTag.objects.delete_tag(tag_id, request.user)
-      response['message'] = _('Tag(s) removed!')
+      DocumentTag.objects.delete_tag(request.POST['tag_id'], request.user)
+      response['message'] = _('Project removed!')
       response['status'] = 0
     except Exception, e:
       response['message'] = force_unicode(e)
