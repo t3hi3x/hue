@@ -240,9 +240,96 @@ ${layout.menubar(section='query')}
         %endif
     </div>
     <div class="card-body">
+      <ul class="nav nav-tabs">
+        <li class="active recentLi"><a href="#queryBuild" data-toggle="tab">${_('Build')}</a></li>
+        <!-- ko if: !design.explain() -->
+        <li><a href="#querySQL" data-toggle="tab">${_('SQL')}</a></li>
+        <!-- /ko -->
+        <!-- ko if: !design.explain() -->
+        <!-- /ko -->
+        <!-- ko if: design.explain() && !design.isRunning() -->
+        <li><a href="#explanation" data-toggle="tab">${_('Explanation')}</a></li>
+        <!-- /ko -->
+      </ul>
       <div class="tab-content">
-        <div id="queryPane">
+        <div class="active tab-pane" id="queryBuild">
+                <div id="Fields" style="padding: 5px; min-height: 400px;">
+                    <div class="formLabel">Choose a starting point</div>
+                    <table id='table-source-info'>
+                        <tr id='tr-database'>
+                            <td><label for="id_database">Database*</label></td>
+                            <td><select title="Database" id="id_database" name="database" style="width:229px;" onchange="database_change($(this), false, false, false);" >
+                                <option value="">---</option>
+                                {% for i in databases %}
+                                    <option value="{{ i.id }}">{{ i.pretty_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        </tr>
+                        <tr id='tr-schema'>
+                            <td><label for="id_schema">Schema*</label></td>
+                            <td><select id="id_schema" name="schema" style="width:229px;" disabled="true" onchange="schema_change($(this), false, false, false);" >
+                                </select>
+                            </td>
+                        </tr>
+                        <tr id='tr-table'>
+                            <td><label for="id_table">Table*</label></td>
+                            <td><select id="id_table" name="table" style="width:229px;" disabled="true" onchange="table_change($(this), false, false, false);" >
+                                </select>
+                            </td>
+                        </tr>
+                    </table>
+                    <div id="field-selector">
+                        <div style="padding-top: 15px; padding-bottom: 10px;">
+                            <div style="float:left;">
+                                <div class="formLabel">Available Fields</div>
+                                <div style="width:300px; min-height: 180px;" class="ui-widget-content ui-corner-all">
+                                    <div style="padding-left:10px" id="available-fields" ></div>
+                                </div>
+                            </div>
+                            <div style="float:right;">
+                                <div class="formLabel">Selected Fields</div>
+                                <div style="width:300px; min-height: 180px;" class="ui-widget-content ui-corner-all">
+                                    <ul id="selected-fields">
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="clear"></div>
+                        </div>
+                        <a id="calc-field" href="#">+ Calculation</a>
+                    </div>
+                </div>
+                <div id="Filter" style="padding: 5px;">
+                    <div style="text-decoration: underline; padding-bottom: 5px;">Filters</div>
+                    <div style="padding-top:2px; width:643px; min-height: 180px;" class="ui-widget-content ui-corner-all">
+                        <ul id="filter-list">
 
+                        </ul>
+                    </div>
+                        <div class="jq-buttons" style="padding: 7px;">
+                            <a id='new-filter-button' title="Add Line" laoding="false" href="#">Add</a>
+                        </div>
+                </div>
+                <div id="Access">
+                    <table style="width:640px;" id="access-t">
+                        <thead>
+                            <tr>
+                                <td width="30">User</td>
+                                <td width="30">Group</td>
+                                <td width="75">Access</td>
+                                <td width="50"></td>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                    <div class="clear"></div>
+                        <div class="jq-buttons" style="padding: 7px;">
+                            <a id='new-access-button' title="Grant Access" href="#">Add</a>
+                        </div>
+                </div>
+        </div>
+        <div class="tab-pane" id="querySQL">
           <div data-bind="css: {'hide': design.errors().length == 0}" class="alert alert-error">
             <!-- ko if: $root.getQueryErrors().length > 0 -->
             <p><strong>${_('Please provide a query')}</strong></p>
@@ -265,23 +352,22 @@ ${layout.menubar(section='query')}
           </div>
 
           <textarea class="hide" tabindex="1" name="query" id="queryField"></textarea>
-
-          <div class="actions">
-            <button data-bind="click: tryExecuteQuery, visible: $root.canExecute, enable: $root.queryEditorBlank" type="button" id="executeQuery" class="btn btn-primary disable-feedback" tabindex="2">${_('Execute')}</button>
-            <button data-bind="click: tryCancelQuery, visible: $root.design.isRunning()" class="btn btn-danger" data-loading-text="${ _('Canceling...') }" rel="tooltip" data-original-title="${ _('Cancel the query') }">${ _('Cancel') }</button>
-
-            <button data-bind="click: tryExecuteNextStatement, visible: !$root.design.isFinished()" type="button" class="btn btn-primary disable-feedback" tabindex="2">${_('Next')}</button>
-            <button data-bind="click: tryExecuteQuery, visible: !$root.design.isFinished()" type="button" id="executeQuery" class="btn btn-primary disable-feedback" tabindex="2">${_('Restart')}</button>
-
-            <button data-bind="click: trySaveDesign, css: {'hide': !$root.design.id() || $root.design.id() == -1}" type="button" class="btn hide">${_('Save')}</button>
-            <button data-bind="click: saveAsModal" type="button" class="btn">${_('Save as...')}</button>
-            <button data-bind="click: tryExplainQuery, visible: $root.canExecute" type="button" id="explainQuery" class="btn">${_('Explain')}</button>
-            &nbsp; ${_('or create a')} &nbsp;
-            <button data-bind="click: createNewQuery" type="button" class="btn">${_('New query')}</button>
-            <br/><br/>
-          </div>
-
         </div>
+      </div>
+      <div class="actions">
+        <button data-bind="click: tryExecuteQuery, visible: $root.canExecute, enable: $root.queryEditorBlank" type="button" id="executeQuery" class="btn btn-primary disable-feedback" tabindex="2">${_('Execute')}</button>
+        <button data-bind="click: tryCancelQuery, visible: $root.design.isRunning()" class="btn btn-danger" data-loading-text="${ _('Canceling...') }" rel="tooltip" data-original-title="${ _('Cancel the query') }">${ _('Cancel') }</button>
+
+        <button data-bind="click: tryExecuteNextStatement, visible: !$root.design.isFinished()" type="button" class="btn btn-primary disable-feedback" tabindex="2">${_('Next')}</button>
+        <button data-bind="click: tryExecuteQuery, visible: !$root.design.isFinished()" type="button" id="executeQuery" class="btn btn-primary disable-feedback" tabindex="2">${_('Restart')}</button>
+
+        <button data-bind="click: trySaveDesign, css: {'hide': !$root.design.id() || $root.design.id() == -1}" type="button" class="btn hide">${_('Save')}</button>
+        <button data-bind="click: saveAsModal" type="button" class="btn">${_('Save as...')}</button>
+        <button data-bind="click: tryExplainQuery, visible: $root.canExecute" type="button" id="explainQuery" class="btn">${_('Explain')}</button>
+        &nbsp; ${_('or create a')} &nbsp;
+        <button data-bind="click: createNewQuery" type="button" class="btn">${_('New query')}</button>
+
+        <br/><br/>
       </div>
     </div>
   </div>

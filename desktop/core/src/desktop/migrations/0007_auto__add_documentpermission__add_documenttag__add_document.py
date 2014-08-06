@@ -13,7 +13,7 @@ class Migration(SchemaMigration):
         # Adding model 'DocumentPermission'
         db.create_table('desktop_documentpermission', (
             ('perms', self.gf('django.db.models.fields.TextField')(default='read')),
-            ('doc', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['desktop.Document'])),
+            ('doc2', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['desktop.Document'])),
             ('id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
         ))
         db.send_create_signal('desktop', ['DocumentPermission'])

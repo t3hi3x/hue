@@ -119,7 +119,7 @@ ${ layout.metastore_menubar() }
                     selected = table_form["row_format"].data or table_form["row_format"].field.initial
                 %>
                 <div class="control-group">
-                    <label class="control-label" id="formatRadio">${_('Record format')}</label>
+                    <label class="control-label" id="format#">${_('Record format')}</label>
                     <div class="controls">
                         <label class="radio">
                             <input type="radio" name="table-row_format" value="Delimited"

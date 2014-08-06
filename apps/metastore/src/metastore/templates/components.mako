@@ -28,6 +28,9 @@
                 <a href="/${app_name}">
                   <img src="/metastore/static/art/icon_metastore_24.png" />
                   ${ _('Metastore Manager') }
+                    <li><a href="${ url('metastore:index') }">${_('Tables')}</a></li>
+                    <li><a href="${ url('metastore:relationships') }">${_('Relationships')}</a></li>
+                    <!--<li><a href="${ url('rdbms:list_designs') }">${_('Functions')}</a></li>-->
                 </a>
               </li>
             </ul>
@@ -42,6 +45,24 @@
   <ul class="nav nav-pills hueBreadcrumbBar" id="breadcrumbs">
     <li>
       <a href="${url('metastore:databases')}">${_('Databases')}</a><span class="divider">&gt;</span>
+    </li>
+    % for crumb in breadcrumbs:
+    <li>
+      % if not loop.last:
+        <a href="${ crumb['url'] }">${ crumb['name'] }</a>
+        <span class="divider">&gt;</span>
+      % else:
+        <span style="padding-left:12px">${ crumb['name'] }</span>
+      % endif
+    </li>
+    % endfor
+  </ul>
+</%def>
+
+<%def name="relationship_breadcrumbs(breadcrumbs)">
+  <ul class="nav nav-pills hueBreadcrumbBar" id="breadcrumbs">
+    <li>
+      <a href="${url('metastore:relationships')}">${_('Relationships')}</a><span class="divider">&gt;</span>
     </li>
     % for crumb in breadcrumbs:
     <li>

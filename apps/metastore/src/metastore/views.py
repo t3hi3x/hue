@@ -27,6 +27,7 @@ from django.core.urlresolvers import reverse
 from desktop.context_processors import get_app_name
 from desktop.lib.django_util import render
 from desktop.lib.exceptions_renderable import PopupException
+from desktop.lib.django_forms import MultiForm
 
 from beeswax.design import hql_query
 from beeswax.models import SavedQuery, MetaInstall
@@ -34,7 +35,9 @@ from beeswax.server import dbms
 from beeswax.server.dbms import get_query_server_config
 from metastore.forms import LoadDataForm, DbForm
 from metastore.settings import DJANGO_APPS
+from metastore.models import *
 
+from metastore.forms import *
 
 LOG = logging.getLogger(__name__)
 
@@ -311,3 +314,40 @@ def analyze_table(request, database, table, column=None):
 
 def has_write_access(user):
   return user.is_superuser or user.has_hue_permission(action="write", app=DJANGO_APPS[0])
+
+"""
+Relationship Views
+"""
+
+def relationships(request):
+  relationships = Relationship.objects.all()
+  relationships_dict = []
+  for r in relationships:
+    r_dict = {"name": r.name, "table1": r.table1, "table2": r.table2, "field1": r.field1, "field2": r.field2,
+              "join": r.join, "operation": r.operation, "sql": r.sql(), "id": r.id}
+    relationships_dict.append(r_dict)
+  return render("relationships.mako", request, {
+    'breadcrumbs': [],
+    'relationships': relationships,
+    'relationships_json': json.dumps(relationships_dict),
+    'has_write_access': True,
+  })
+
+def create_relationship(request):
+  form = MultiForm(
+      relationship=CreateRelationshipForm,
+  )
+
+  if request.method == "POST":
+    form.bind(request.POST)
+
+    if request.POST.get('create'):
+      if form.is_valid():
+        return
+  else:
+    form.bind()
+
+  return render("create_relationship.mako", request, {
+    'breadcrumbs': [],
+    'relationship_form': form.relationship
+  })
